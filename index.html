@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="UNIVERSE — an interactive journey through space, time, and the cosmos." />
+<title>UNIVERSE · An Interactive Cosmos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #04040a;
+    --bg-2: #070713;
+    --ink: #eef0ff;
+    --ink-dim: #a7abc9;
+    --ink-faint: #6d7294;
+    --violet: #7c5cff;
+    --cyan: #35e0ff;
+    --magenta: #ff5cc8;
+    --amber: #ffc46b;
+    --line: rgba(255, 255, 255, 0.09);
+    --glass: rgba(255, 255, 255, 0.035);
+    --glass-2: rgba(255, 255, 255, 0.06);
+    --maxw: 1280px;
+    --font-display: "Unbounded", "Space Grotesk", system-ui, sans-serif;
+    --font-body: "Space Grotesk", system-ui, -apple-system, sans-serif;
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-io: cubic-bezier(0.65, 0, 0.35, 1);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    cursor: none;
+  }
+  @media (max-width: 768px) { body { cursor: auto; } }
+
+  ::selection { background: var(--violet); color: #fff; }
+
+  a { color: inherit; text-decoration: none; cursor: none; }
+  button { cursor: none; font: inherit; }
+  @media (max-width: 768px) { a, button { cursor: auto; } }
+
+  /* ---------- Layered space background ---------- */
+  .space {
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(1200px 800px at 78% -10%, rgba(124, 92, 255, 0.20), transparent 60%),
+      radial-gradient(1000px 700px at 12% 18%, rgba(53, 224, 255, 0.14), transparent 55%),
+      radial-gradient(900px 900px at 60% 110%, rgba(255, 92, 200, 0.12), transparent 60%),
+      linear-gradient(180deg, #05050d 0%, #04040a 40%, #060509 100%);
+  }
+  #stars { position: fixed; inset: 0; z-index: -1; width: 100%; height: 100%; display: block; }
+
+  .grain {
+    position: fixed; inset: 0; z-index: 50; pointer-events: none; opacity: 0.05;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  .vignette {
+    position: fixed; inset: 0; z-index: 1; pointer-events: none;
+    background: radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,0.55) 100%);
+  }
+
+  /* ---------- Custom cursor ---------- */
+  .cursor, .cursor-dot {
+    position: fixed; top: 0; left: 0; z-index: 999; pointer-events: none;
+    border-radius: 50%; transform: translate(-50%, -50%);
+    will-change: transform;
+  }
+  .cursor {
+    width: 34px; height: 34px; border: 1px solid rgba(255,255,255,0.5);
+    transition: width .25s var(--ease-out), height .25s var(--ease-out),
+                background-color .25s, border-color .25s, opacity .3s;
+    mix-blend-mode: screen;
+  }
+  .cursor-dot { width: 5px; height: 5px; background: var(--cyan); box-shadow: 0 0 12px var(--cyan); }
+  .cursor.hovering { width: 60px; height: 60px; background: rgba(53,224,255,0.08); border-color: var(--cyan); }
+  @media (max-width: 768px) { .cursor, .cursor-dot { display: none; } }
+
+  /* ---------- Scroll progress ---------- */
+  .progress {
+    position: fixed; top: 0; left: 0; height: 2px; width: 100%;
+    background: linear-gradient(90deg, var(--violet), var(--cyan), var(--magenta));
+    transform-origin: 0 0; transform: scaleX(0); z-index: 100;
+  }
+
+  /* ---------- Nav ---------- */
+  .nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px clamp(20px, 5vw, 56px);
+    transition: background .4s, backdrop-filter .4s, border-color .4s, padding .4s;
+    border-bottom: 1px solid transparent;
+  }
+  .nav.scrolled {
+    background: rgba(6,6,14,0.55);
+    backdrop-filter: blur(18px) saturate(1.2);
+    -webkit-backdrop-filter: blur(18px) saturate(1.2);
+    border-bottom-color: var(--line);
+    padding-top: 14px; padding-bottom: 14px;
+  }
+  .brand {
+    font-family: var(--font-display); font-weight: 700; letter-spacing: 0.32em;
+    font-size: 13px; display: flex; align-items: center; gap: 12px;
+  }
+  .brand .mark {
+    width: 12px; height: 12px; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #fff, var(--violet) 45%, var(--cyan) 100%);
+    box-shadow: 0 0 18px var(--violet), 0 0 34px rgba(124,92,255,.5);
+    animation: pulse 3.5s var(--ease-io) infinite;
+  }
+  @keyframes pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.35); } }
+  .nav-links { display: flex; gap: 30px; }
+  .nav-links a {
+    font-size: 12.5px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim);
+    position: relative; padding: 6px 0; transition: color .3s;
+  }
+  .nav-links a::after {
+    content: ""; position: absolute; left: 0; bottom: 0; height: 1px; width: 100%;
+    background: linear-gradient(90deg, var(--violet), var(--cyan));
+    transform: scaleX(0); transform-origin: 0 50%; transition: transform .35s var(--ease-out);
+  }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-links a:hover::after { transform: scaleX(1); }
+  @media (max-width: 820px) { .nav-links { display: none; } }
+
+  /* ---------- Layout ---------- */
+  main { position: relative; z-index: 2; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 clamp(20px, 5vw, 56px); }
+  section { position: relative; padding: clamp(90px, 13vw, 160px) 0; }
+
+  .kicker {
+    display: inline-flex; align-items: center; gap: 12px;
+    font-size: 12px; letter-spacing: 0.4em; text-transform: uppercase;
+    color: var(--cyan); margin-bottom: 22px;
+  }
+  .kicker::before { content: ""; width: 34px; height: 1px; background: linear-gradient(90deg, transparent, var(--cyan)); }
+  .section-title {
+    font-family: var(--font-display); font-weight: 600; line-height: 1.02;
+    font-size: clamp(34px, 6.2vw, 72px); letter-spacing: -0.01em;
+  }
+  .section-title .em { color: transparent; -webkit-text-stroke: 1.5px rgba(255,255,255,.6); }
+  .lead { color: var(--ink-dim); max-width: 56ch; margin-top: 22px; font-size: clamp(15px, 1.6vw, 18px); }
+
+  /* reveal on scroll */
+  .reveal { opacity: 0; transform: translateY(34px); transition: opacity 1s var(--ease-out), transform 1s var(--ease-out); }
+  .reveal.in { opacity: 1; transform: none; }
+  .reveal[data-d="1"] { transition-delay: .08s; }
+  .reveal[data-d="2"] { transition-delay: .16s; }
+  .reveal[data-d="3"] { transition-delay: .24s; }
+  .reveal[data-d="4"] { transition-delay: .32s; }
+
+  /* ---------- HERO ---------- */
+  .hero { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+  .hero-inner { position: relative; width: 100%; }
+  .hero-eyebrow {
+    display: inline-flex; align-items: center; gap: 14px;
+    font-size: 12px; letter-spacing: 0.42em; text-transform: uppercase; color: var(--ink-dim);
+    margin-bottom: 26px;
+  }
+  .hero-eyebrow .tag { color: var(--cyan); }
+  .hero-eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--magenta); box-shadow: 0 0 14px var(--magenta); animation: pulse 2.8s var(--ease-io) infinite; }
+
+  .hero-title {
+    font-family: var(--font-display); font-weight: 800;
+    font-size: clamp(48px, 13vw, 172px); line-height: 0.9; letter-spacing: -0.02em;
+    display: flex; flex-wrap: wrap; gap: 0 0.06em;
+  }
+  .hero-title .word { display: inline-flex; overflow: hidden; }
+  .hero-title .ch {
+    display: inline-block; transform: translateY(110%) rotate(8deg);
+    animation: chUp 1s var(--ease-out) forwards;
+    background: linear-gradient(180deg, #fff 0%, #d9d7ff 55%, #8f8bd8 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero-title .ch.glow {
+    background: linear-gradient(120deg, var(--cyan), var(--violet) 50%, var(--magenta));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 0 26px rgba(124,92,255,0.55));
+  }
+  @keyframes chUp { to { transform: translateY(0) rotate(0); } }
+
+  .hero-sub {
+    margin-top: 30px; max-width: 60ch; color: var(--ink-dim);
+    font-size: clamp(15px, 1.7vw, 19px);
+    opacity: 0; animation: fadeUp 1.1s var(--ease-out) 0.7s forwards;
+  }
+  .hero-sub b { color: var(--ink); font-weight: 600; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+
+  .hero-actions {
+    margin-top: 40px; display: flex; gap: 18px; flex-wrap: wrap;
+    opacity: 0; animation: fadeUp 1.1s var(--ease-out) 0.85s forwards;
+  }
+  .btn {
+    position: relative; display: inline-flex; align-items: center; gap: 12px;
+    padding: 16px 30px; border-radius: 100px; font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase;
+    border: 1px solid var(--line); color: var(--ink); background: var(--glass);
+    backdrop-filter: blur(8px); transition: transform .35s var(--ease-out), border-color .3s, background .3s;
+    overflow: hidden;
+  }
+  .btn .arw { transition: transform .35s var(--ease-out); }
+  .btn:hover .arw { transform: translateX(5px); }
+  .btn.primary {
+    background: linear-gradient(120deg, var(--violet), var(--cyan));
+    border-color: transparent; color: #05050f; font-weight: 600;
+    box-shadow: 0 12px 40px -10px rgba(124,92,255,0.7);
+  }
+  .btn.primary:hover { transform: translateY(-3px); box-shadow: 0 18px 50px -8px rgba(53,224,255,0.55); }
+  .btn.ghost:hover { transform: translateY(-3px); border-color: var(--cyan); background: var(--glass-2); }
+
+  /* orbit decoration */
+  .orbit-scene {
+    position: absolute; top: 50%; right: -6%; transform: translateY(-50%);
+    width: clamp(300px, 44vw, 640px); aspect-ratio: 1; z-index: -1; opacity: 0;
+    animation: fadeScale 1.6s var(--ease-out) 0.5s forwards; pointer-events: none;
+  }
+  @keyframes fadeScale { from { opacity: 0; transform: translateY(-50%) scale(0.85); } to { opacity: 1; transform: translateY(-50%) scale(1); } }
+  .orbit-scene svg { width: 100%; height: 100%; overflow: visible; }
+  .spin { transform-origin: 300px 300px; animation: spin 60s linear infinite; }
+  .spin.rev { animation-direction: reverse; animation-duration: 90s; }
+  .spin.slow { animation-duration: 120s; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .orbit-ring { fill: none; stroke: rgba(255,255,255,0.14); stroke-width: 1; }
+  .sun-core { filter: drop-shadow(0 0 30px rgba(255,196,107,0.8)); }
+
+  /* scroll cue */
+  .scroll-cue {
+    position: absolute; bottom: 34px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+    font-size: 10.5px; letter-spacing: 0.4em; text-transform: uppercase; color: var(--ink-faint);
+    opacity: 0; animation: fadeUp 1s var(--ease-out) 1.4s forwards;
+  }
+  .mouse { width: 24px; height: 38px; border: 1.5px solid var(--ink-faint); border-radius: 14px; position: relative; }
+  .mouse::after {
+    content: ""; position: absolute; top: 7px; left: 50%; transform: translateX(-50%);
+    width: 3px; height: 7px; border-radius: 3px; background: var(--cyan);
+    animation: wheel 1.8s var(--ease-io) infinite;
+  }
+  @keyframes wheel { 0% { opacity: 1; top: 7px; } 70% { opacity: 0; top: 20px; } 100% { opacity: 0; top: 7px; } }
+
+  /* ---------- SCALE LADDER ---------- */
+  .ladder { margin-top: 64px; display: grid; gap: 18px; }
+  .rung {
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 20px;
+    padding: 30px clamp(20px, 4vw, 44px); border: 1px solid var(--line); border-radius: 20px;
+    background: linear-gradient(100deg, var(--glass), transparent 70%);
+    position: relative; overflow: hidden;
+  }
+  .rung::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: linear-gradient(180deg, var(--c1, var(--violet)), var(--c2, var(--cyan)));
+    opacity: 0.9;
+  }
+  .rung h3 { font-family: var(--font-display); font-weight: 500; font-size: clamp(18px, 2.4vw, 28px); }
+  .rung p { color: var(--ink-dim); margin-top: 6px; max-width: 52ch; font-size: 14.5px; }
+  .rung .dist { font-family: var(--font-display); font-weight: 700; font-size: clamp(15px, 2vw, 22px); color: var(--ink); text-align: right; }
+  .rung .dist span { display: block; font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-faint); margin-top: 4px; }
+  .rung .bar { margin-top: 12px; height: 3px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; }
+  .rung .bar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, var(--c1, var(--violet)), var(--c2, var(--cyan))); transition: width 1.5s var(--ease-out) .2s; }
+  .rung.in .bar i { width: var(--w, 60%); }
+
+  /* ---------- ORBITS ---------- */
+  .orbit-lab { margin-top: 64px; position: relative; display: grid; place-items: center; }
+  .system {
+    --size: clamp(300px, 52vw, 680px);
+    position: relative; width: var(--size); height: var(--size);
+  }
+  .system .star-c {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 46px; height: 46px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 32%, #fff, var(--amber) 40%, #ff7a2d 75%, #a5320c);
+    box-shadow: 0 0 50px 8px rgba(255,150,60,0.55), 0 0 120px 30px rgba(255,120,40,0.28);
+    animation: sunPulse 5s var(--ease-io) infinite;
+  }
+  @keyframes sunPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); } 50% { transform: translate(-50%,-50%) scale(1.06); } }
+  .orbit {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    border: 1px dashed rgba(255,255,255,0.12); border-radius: 50%;
+    animation: rot linear infinite;
+  }
+  @keyframes rot { to { transform: translate(-50%,-50%) rotate(360deg); } }
+  .planet {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    border-radius: 50%;
+  }
+  .orbit:hover { animation-play-state: paused; }
+  .system:hover .orbit { animation-play-state: paused; }
+  .system.paused .orbit { animation-play-state: paused; }
+  .p1 { width: 26px; height: 26px; background: radial-gradient(circle at 32% 30%, #cfe8ff, var(--cyan) 55%, #0b5f7a); box-shadow: 0 0 18px rgba(53,224,255,0.6); }
+  .p2 { width: 16px; height: 16px; background: radial-gradient(circle at 32% 30%, #ffe2c0, var(--amber) 55%, #8a5a12); box-shadow: 0 0 14px rgba(255,196,107,0.5); }
+  .p3 { width: 22px; height: 22px; background: radial-gradient(circle at 32% 30%, #f0d9ff, var(--violet) 55%, #3a1f7a); box-shadow: 0 0 18px rgba(124,92,255,0.6); }
+  .p4 { width: 12px; height: 12px; background: radial-gradient(circle at 32% 30%, #ffd6f0, var(--magenta) 55%, #7a1f5c); box-shadow: 0 0 14px rgba(255,92,200,0.6); }
+  .planet .label {
+    position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: 8px;
+    font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap;
+  }
+  .orbit-controls { display: flex; gap: 12px; justify-content: center; margin-top: 40px; }
+  .chip {
+    padding: 10px 20px; border-radius: 100px; border: 1px solid var(--line); background: var(--glass);
+    font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim);
+    transition: all .3s var(--ease-out);
+  }
+  .chip:hover, .chip.active { color: var(--ink); border-color: var(--cyan); background: var(--glass-2); box-shadow: 0 0 24px -6px rgba(53,224,255,0.5); }
+
+  /* ---------- TIMELINE ---------- */
+  .timeline { margin-top: 64px; position: relative; }
+  .timeline::before {
+    content: ""; position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; transform: translateX(-50%);
+    background: linear-gradient(180deg, transparent, var(--violet) 8%, var(--cyan) 50%, var(--magenta) 92%, transparent);
+  }
+  .tl-item { position: relative; width: 50%; padding: 0 48px 72px; }
+  .tl-item:nth-child(odd) { left: 0; text-align: right; }
+  .tl-item:nth-child(even) { left: 50%; }
+  .tl-item .node {
+    position: absolute; top: 6px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--violet); z-index: 2;
+    box-shadow: 0 0 0 6px rgba(124,92,255,0.12), 0 0 22px var(--violet);
+  }
+  .tl-item:nth-child(odd) .node { right: -9px; }
+  .tl-item:nth-child(even) .node { left: -9px; }
+  .tl-item .time { font-family: var(--font-display); font-weight: 700; font-size: 13px; letter-spacing: 0.2em; color: var(--cyan); }
+  .tl-item h3 { font-family: var(--font-display); font-weight: 500; font-size: clamp(20px, 2.6vw, 30px); margin: 8px 0 10px; }
+  .tl-item p { color: var(--ink-dim); font-size: 15px; max-width: 46ch; }
+  .tl-item:nth-child(odd) p { margin-left: auto; }
+  @media (max-width: 760px) {
+    .timeline::before { left: 12px; }
+    .tl-item, .tl-item:nth-child(even) { width: 100%; left: 0; text-align: left; padding: 0 0 60px 44px; }
+    .tl-item:nth-child(odd) { text-align: left; }
+    .tl-item:nth-child(odd) .node, .tl-item:nth-child(even) .node { left: 3px; right: auto; }
+    .tl-item:nth-child(odd) p { margin-left: 0; }
+  }
+
+  /* ---------- WONDER CARDS ---------- */
+  .cards { margin-top: 64px; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 22px; }
+  .card {
+    position: relative; border: 1px solid var(--line); border-radius: 22px; padding: 30px;
+    background: linear-gradient(155deg, var(--glass-2), var(--glass) 60%);
+    transform-style: preserve-3d; transition: transform .2s ease-out, border-color .3s, box-shadow .3s;
+    will-change: transform; overflow: hidden;
+  }
+  .card::after {
+    content: ""; position: absolute; inset: 0; border-radius: 22px; pointer-events: none; opacity: 0;
+    background: radial-gradient(400px circle at var(--mx, 50%) var(--my, 50%), rgba(255,255,255,0.10), transparent 45%);
+    transition: opacity .3s;
+  }
+  .card:hover::after { opacity: 1; }
+  .card:hover { border-color: rgba(255,255,255,0.22); box-shadow: 0 30px 70px -30px rgba(0,0,0,0.9); }
+  .card .ico {
+    width: 52px; height: 52px; border-radius: 14px; display: grid; place-items: center; margin-bottom: 22px;
+    background: var(--tint, rgba(124,92,255,0.14)); border: 1px solid var(--line);
+    transform: translateZ(40px);
+  }
+  .card .ico svg { width: 26px; height: 26px; stroke: var(--tone, var(--violet)); fill: none; stroke-width: 1.6; }
+  .card h3 { font-family: var(--font-display); font-weight: 500; font-size: 21px; transform: translateZ(30px); }
+  .card p { color: var(--ink-dim); margin-top: 12px; font-size: 14.5px; transform: translateZ(20px); }
+  .card .stat { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; transform: translateZ(20px); }
+  .card .stat b { font-family: var(--font-display); font-weight: 700; color: var(--tone, var(--violet)); font-size: 17px; }
+  .card .stat span { font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-faint); }
+
+  /* ---------- STATS BAND ---------- */
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; margin-top: 64px; }
+  .stat-cell { padding: 30px; border: 1px solid var(--line); border-radius: 20px; background: var(--glass); }
+  .stat-cell .num { font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 4vw, 44px); background: linear-gradient(120deg, #fff, var(--cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .stat-cell .lbl { margin-top: 10px; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim); }
+  @media (max-width: 820px) { .stats { grid-template-columns: repeat(2, 1fr); } }
+
+  /* ---------- GRAVITY PLAYGROUND ---------- */
+  .play { margin-top: 64px; position: relative; border: 1px solid var(--line); border-radius: 26px; overflow: hidden; background: rgba(5,5,12,0.5); }
+  #gravity { display: block; width: 100%; height: clamp(380px, 58vh, 620px); }
+  .play .hint {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--ink-faint);
+    background: rgba(0,0,0,0.35); padding: 8px 18px; border-radius: 100px; border: 1px solid var(--line);
+    backdrop-filter: blur(6px); pointer-events: none; transition: opacity .5s;
+  }
+  .play .hint.gone { opacity: 0; }
+  .play .plabel { position: absolute; bottom: 18px; left: 18px; font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--ink-faint); }
+
+  /* ---------- FOOTER ---------- */
+  footer { position: relative; z-index: 2; border-top: 1px solid var(--line); padding: 70px 0 40px; }
+  .foot-inner { display: flex; flex-direction: column; gap: 26px; }
+  .foot-brand { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.3em; font-size: clamp(30px, 8vw, 64px); background: linear-gradient(120deg, #fff, var(--violet)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .foot-note { color: var(--ink-faint); font-size: 13px; letter-spacing: 0.06em; }
+  .foot-links { display: flex; gap: 26px; flex-wrap: wrap; }
+  .foot-links a { font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-dim); transition: color .3s; }
+  .foot-links a:hover { color: var(--cyan); }
+
+  .back-top {
+    position: fixed; bottom: 26px; right: 26px; z-index: 90; width: 48px; height: 48px; border-radius: 50%;
+    display: grid; place-items: center; border: 1px solid var(--line); background: rgba(10,10,22,0.6); backdrop-filter: blur(10px);
+    opacity: 0; pointer-events: none; transform: translateY(12px); transition: all .4s var(--ease-out);
+  }
+  .back-top.show { opacity: 1; pointer-events: auto; transform: none; }
+  .back-top:hover { border-color: var(--cyan); box-shadow: 0 0 26px -6px rgba(53,224,255,0.5); }
+  .back-top svg { width: 18px; height: 18px; stroke: var(--ink); fill: none; stroke-width: 1.8; }
+
+  /* ---------- Reduced motion ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; scroll-behavior: auto !important; }
+    .hero-title .ch { transform: none; }
+    .reveal { opacity: 1; transform: none; }
+    body { cursor: auto; }
+    .cursor, .cursor-dot { display: none; }
+  }
+</style>
+</head>
+<body>
+  <div class="space"></div>
+  <canvas id="stars"></canvas>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+  <div class="progress" id="progress"></div>
+  <div class="cursor" id="cursor"></div>
+  <div class="cursor-dot" id="cursorDot"></div>
+
+  <nav class="nav" id="nav">
+    <a class="brand" href="#top" data-hover><span class="mark"></span>UNIVERSE</a>
+    <div class="nav-links">
+      <a href="#scale" data-hover>Scale</a>
+      <a href="#orbits" data-hover>Orbits</a>
+      <a href="#timeline" data-hover>Timeline</a>
+      <a href="#wonders" data-hover>Wonders</a>
+      <a href="#playground" data-hover>Playground</a>
+    </div>
+  </nav>
+
+  <main id="top">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="wrap hero-inner">
+        <div class="orbit-scene" aria-hidden="true">
+          <svg viewBox="0 0 600 600" fill="none">
+            <g class="spin slow"><circle class="orbit-ring" cx="300" cy="300" r="270" stroke-dasharray="2 8" /></g>
+            <g class="spin"><circle class="orbit-ring" cx="300" cy="300" r="210" stroke-dasharray="1 7" />
+              <circle cx="510" cy="300" r="9" fill="#35e0ff" /><circle cx="510" cy="300" r="18" fill="#35e0ff" opacity="0.18" />
+            </g>
+            <g class="spin rev"><circle class="orbit-ring" cx="300" cy="300" r="150" stroke-dasharray="1 6" />
+              <circle cx="150" cy="300" r="7" fill="#7c5cff" /><circle cx="150" cy="300" r="15" fill="#7c5cff" opacity="0.2" />
+              <circle cx="406" cy="194" r="5" fill="#ff5cc8" />
+            </g>
+            <g class="spin" style="animation-duration:40s"><circle class="orbit-ring" cx="300" cy="300" r="95" stroke-dasharray="1 5" />
+              <circle cx="395" cy="300" r="6" fill="#ffc46b" />
+            </g>
+            <circle class="sun-core" cx="300" cy="300" r="34" fill="url(#sg)" />
+            <defs>
+              <radialGradient id="sg" cx="35%" cy="32%"><stop offset="0" stop-color="#fff"/><stop offset="0.45" stop-color="#ffc46b"/><stop offset="1" stop-color="#ff6a2d" stop-opacity="0.35"/></radialGradient>
+            </defs>
+          </svg>
+        </div>
+
+        <div class="hero-eyebrow"><span class="dot"></span><span class="tag">An interactive cosmos</span> · est. 13.8 billion years ago</div>
+        <h1 class="hero-title" id="heroTitle" aria-label="UNIVERSE">
+          <span class="word" data-word="UNIVERSE"></span>
+        </h1>
+        <p class="hero-sub">From a singularity to a sea of galaxies — <b>13.8 billion years</b>, <b>2 trillion</b> galaxies, and <b>10<sup>11</sup> stars</b> in each. Scroll to drift deeper into the void.</p>
+        <div class="hero-actions">
+          <a class="btn primary" href="#scale" data-hover>Begin the descent <span class="arw">→</span></a>
+          <a class="btn ghost" href="#playground" data-hover>Enter the gravity lab</a>
+        </div>
+      </div>
+      <div class="scroll-cue"><div class="mouse"></div><span>Scroll</span></div>
+    </section>
+
+    <!-- SCALE -->
+    <section id="scale">
+      <div class="wrap">
+        <span class="kicker reveal">01 · Scale of the cosmos</span>
+        <h2 class="section-title reveal" data-d="1">Nothing is <span class="em">close.</span><br />Everything is far.</h2>
+        <p class="lead reveal" data-d="2">Distance in space stops meaning what we know it to. These are the rungs of the cosmic ladder — each one a jump of scale that reshapes intuition.</p>
+        <div class="ladder">
+          <div class="rung reveal" style="--c1:#35e0ff;--c2:#7c5cff;--w:12%">
+            <div><h3>The Earth → Moon</h3><p>One light-second stretched across the void. A laser round trip takes 2.5 seconds.</p><div class="bar"><i></i></div></div>
+            <div class="dist">384,400 km<span>to the Moon</span></div>
+          </div>
+          <div class="rung reveal" data-d="1" style="--c1:#35e0ff;--c2:#35e0ff;--w:26%">
+            <div><h3>The Solar System</h3><p>Light takes 4.3 hours to reach Pluto — and we leave it all behind, the Voyager 1 probe still counting.</p><div class="bar"><i></i></div></div>
+            <div class="dist">5.9B km<span>to Pluto</span></div>
+          </div>
+          <div class="rung reveal" data-d="2" style="--c1:#7c5cff;--c2:#7c5cff;--w:44%">
+            <div><h3>The Nearest Star</h3><p>Proxima Centauri, our closest stellar neighbour, sits 4.24 light-years away. Light itself needs years.</p><div class="bar"><i></i></div></div>
+            <div class="dist">4.24 ly<span>to Proxima</span></div>
+          </div>
+          <div class="rung reveal" data-d="3" style="--c1:#7c5cff;--c2:#ff5cc8;--w:68%">
+            <div><h3>Our Galaxy</h3><p>The Milky Way is 100,000 light-years across. A photon would spend a hundred millennia crossing it.</p><div class="bar"><i></i></div></div>
+            <div class="dist">100k ly<span>galaxy span</span></div>
+          </div>
+          <div class="rung reveal" data-d="4" style="--c1:#ff5cc8;--c2:#ff5cc8;--w:88%">
+            <div><h3>The Observable Universe</h3><p>93 billion light-years of everything we can ever see — a sphere our tiny galaxy floats inside of.</p><div class="bar"><i></i></div></div>
+            <div class="dist">93B ly<span>observable</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ORBITS -->
+    <section id="orbits">
+      <div class="wrap">
+        <span class="kicker reveal">02 · Orbital mechanics</span>
+        <h2 class="section-title reveal" data-d="1">A system in <span class="em">perpetual fall.</span></h2>
+        <p class="lead reveal" data-d="2">A planet in orbit is falling forever and missing. Hover the system to freeze time; use the controls to bend its speed.</p>
+        <div class="orbit-lab reveal" data-d="2">
+          <div class="system" id="system" role="img" aria-label="Animated planetary system orbiting a star">
+            <div class="star-c"></div>
+            <div class="orbit" data-r="1" style="width:34%;height:34%;animation-duration:14s"><div class="planet p1"><span class="label">Cyanos</span></div></div>
+            <div class="orbit" data-r="2" style="width:56%;height:56%;animation-duration:26s;animation-direction:reverse"><div class="planet p2"><span class="label">Ambra</span></div></div>
+            <div class="orbit" data-r="3" style="width:78%;height:78%;animation-duration:44s"><div class="planet p3"><span class="label">Violetta</span></div></div>
+            <div class="orbit" data-r="4" style="width:100%;height:100%;animation-duration:70s;animation-direction:reverse"><div class="planet p4"><span class="label">Magnea</span></div></div>
+          </div>
+        </div>
+        <div class="orbit-controls reveal" data-d="3">
+          <button class="chip" data-speed="0" data-hover>Pause</button>
+          <button class="chip" data-speed="1" data-hover>Normal</button>
+          <button class="chip" data-speed="2" data-hover>2×</button>
+          <button class="chip" data-speed="5" data-hover>5×</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- TIMELINE -->
+    <section id="timeline">
+      <div class="wrap">
+        <span class="kicker reveal">03 · History of everything</span>
+        <h2 class="section-title reveal" data-d="1">13.8 billion years,<br /><span class="em">compressed.</span></h2>
+        <p class="lead reveal" data-d="2">If the universe were a single year, every human civilization would fit inside the final hour. Here is the story so far.</p>
+        <div class="timeline">
+          <div class="tl-item reveal"><span class="node"></span><div class="time">t = 0</div><h3>The Big Bang</h3><p>Space, time, energy, and everything that follows begin. In a fraction of a second the universe inflates faster than light.</p></div>
+          <div class="tl-item reveal"><span class="node" style="border-color:var(--cyan);box-shadow:0 0 0 6px rgba(53,224,255,0.12),0 0 22px var(--cyan)"></span><div class="time">3 min</div><h3>First Atoms</h3><p>The universe cools enough for protons and neutrons to fuse into hydrogen and helium — the raw fuel of all future stars.</p></div>
+          <div class="tl-item reveal"><span class="node" style="border-color:var(--violet);box-shadow:0 0 0 6px rgba(124,92,255,0.12),0 0 22px var(--violet)"></span><div class="time">200M yrs</div><h3>First Stars Ignite</h3><p>Gravity pulls gas into the first giant stars. Inside their cores, the first heavy elements — carbon, oxygen, iron — are forged.</p></div>
+          <div class="tl-item reveal"><span class="node" style="border-color:var(--cyan);box-shadow:0 0 0 6px rgba(53,224,255,0.12),0 0 22px var(--cyan)"></span><div class="time">1B yrs</div><h3>Galaxies Take Shape</h3><p>Stars cluster into the first galaxies. Structure emerges from the soup — the scaffolding of the cosmos as we know it.</p></div>
+          <div class="tl-item reveal"><span class="node" style="border-color:var(--mamber, var(--amber));box-shadow:0 0 0 6px rgba(255,196,107,0.12),0 0 22px var(--amber)"></span><div class="time">9.2B yrs</div><h3>Sun & Earth Form</h3><p>A cloud of gas and dust collapses. At its heart a star ignites; in its orbit, a rocky world cools — and something begins to stir.</p></div>
+          <div class="tl-item reveal"><span class="node" style="border-color:var(--magenta);box-shadow:0 0 0 6px rgba(255,92,200,0.12),0 0 22px var(--magenta)"></span><div class="time">13.8B yrs</div><h3>Now</h3><p>You, reading this, are the universe observing itself. Every atom in your body was made in the heart of a star.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- WONDER CARDS -->
+    <section id="wonders">
+      <div class="wrap">
+        <span class="kicker reveal">04 · Celestial wonders</span>
+        <h2 class="section-title reveal" data-d="1">Objects that <span class="em">defy</span> your <span class="em">mind.</span></h2>
+        <p class="lead reveal" data-d="2">Move your cursor across a card to feel its depth. Each one is a place physics turns strange.</p>
+        <div class="cards" id="cards">
+          <div class="card reveal" style="--tone:#7c5cff;--tint:rgba(124,92,255,0.14)">
+            <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><ellipse cx="12" cy="12" rx="10" ry="4.5"/></svg></div>
+            <h3>Black Holes</h3>
+            <p>Regions where gravity wins. Inside the event horizon, not even light escapes — and time itself drags toward the singularity.</p>
+            <div class="stat"><b>∞</b><span>central density</span></div>
+          </div>
+          <div class="card reveal" data-d="1" style="--tone:#35e0ff;--tint:rgba(53,224,255,0.14)">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M3 14c3-6 9-8 15-6 2 3-1 8-6 9-3 4-8 3-9-3z"/></svg></div>
+            <h3>Nebulae</h3>
+            <p>Cosmic nurseries of gas and dust where new stars are born. The Pillars of Creation stand 6,500 light-years away, still forming.</p>
+            <div class="stat"><b>6,500 ly</b><span>to the Pillars</span></div>
+          </div>
+          <div class="card reveal" data-d="2" style="--tone:#ff5cc8;--tint:rgba(255,92,200,0.14)">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 2v20M2 12h20M5 5l14 14M19 5L5 19"/></svg></div>
+            <h3>Supernovae</h3>
+            <p>A star's violent death outshines an entire galaxy. In that blast, the iron in your blood was forged and scattered across space.</p>
+            <div class="stat"><b>10⁴⁴ W</b><span>peak power</span></div>
+          </div>
+          <div class="card reveal" data-d="3" style="--tone:#ffc46b;--tint:rgba(255,196,107,0.14)">
+            <div class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l2.5 5.5L20 9l-4 4 1 6-5-3-5 3 1-6-4-4 5.5-.5z"/></svg></div>
+            <h3>Exoplanets</h3>
+            <p>Over 5,700 confirmed worlds orbit other stars — many alien, some in the temperate zone where liquid water might pool.</p>
+            <div class="stat"><b>5,700+</b><span>confirmed</span></div>
+          </div>
+          <div class="card reveal" data-d="1" style="--tone:#35e0ff;--tint:rgba(53,224,255,0.14)">
+            <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12c3 2 6-2 9 0s6 2 9 0"/></svg></div>
+            <h3>Neutron Stars</h3>
+            <p>A city-sized core of a dead star, denser than an atom. A single sugar-cube of its matter weighs about Mount Everest.</p>
+            <div class="stat"><b>10¹⁷ kg/m³</b><span>density</span></div>
+          </div>
+          <div class="card reveal" data-d="2" style="--tone:#7c5cff;--tint:rgba(124,92,255,0.14)">
+            <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="2.5"/><ellipse cx="12" cy="12" rx="9" ry="8"/><ellipse cx="12" cy="12" rx="9" ry="3.5"/></svg></div>
+            <h3>Galaxies</h3>
+            <p>Islands of a trillion stars held together by gravity and mystery. Dark matter binds it all — and we still don't know what it is.</p>
+            <div class="stat"><b>2T+</b><span>in the universe</span></div>
+          </div>
+        </div>
+
+        <div class="stats">
+          <div class="stat-cell reveal"><div class="num" data-count="13.8" data-dec="1" data-suffix=" B yr">0</div><div class="lbl">Age of the universe</div></div>
+          <div class="stat-cell reveal" data-d="1"><div class="num" data-count="2" data-dec="0" data-suffix=" T">0</div><div class="lbl">Estimated galaxies</div></div>
+          <div class="stat-cell reveal" data-d="2"><div class="num" data-count="93" data-dec="0" data-suffix=" B ly">0</div><div class="lbl">Observable diameter</div></div>
+          <div class="stat-cell reveal" data-d="3"><div class="num" data-count="5700" data-dec="0" data-suffix="+">0</div><div class="lbl">Confirmed exoplanets</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PLAYGROUND -->
+    <section id="playground">
+      <div class="wrap">
+        <span class="kicker reveal">05 · Gravity playground</span>
+        <h2 class="section-title reveal" data-d="1">Bend <span class="em">spacetime.</span></h2>
+        <p class="lead reveal" data-d="2">Move your pointer to become a source of gravity. Particles orbit, swirl, and collapse toward you — a toy model of mass warping the fabric of space. Click to reset the swarm.</p>
+        <div class="play reveal" data-d="2">
+          <canvas id="gravity"></canvas>
+          <div class="hint" id="playHint">Move your pointer to pull the swarm</div>
+          <div class="plabel">Interactive · N-body attractor</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap foot-inner">
+      <div class="foot-brand">UNIVERSE</div>
+      <div class="foot-links">
+        <a href="#scale" data-hover>Scale</a>
+        <a href="#orbits" data-hover>Orbits</a>
+        <a href="#timeline" data-hover>Timeline</a>
+        <a href="#wonders" data-hover>Wonders</a>
+        <a href="#playground" data-hover>Playground</a>
+      </div>
+      <p class="foot-note">You are made of star-stuff, observing star-stuff, in star-stuff. — Built with vanilla canvas &amp; no frameworks.</p>
+    </div>
+  </footer>
+
+  <a class="back-top" id="backTop" href="#top" data-hover aria-label="Back to top">
+    <svg viewBox="0 0 24 24"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+  </a>
+
+<script>
+(function () {
+  "use strict";
+  var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var isCoarse = window.matchMedia("(pointer: coarse)").matches;
+
+  /* ============ Custom cursor ============ */
+  (function () {
+    if (reduce || isCoarse) return;
+    var cur = document.getElementById("cursor");
+    var dot = document.getElementById("cursorDot");
+    var cx = -100, cy = -100, tx = -100, ty = -100, dx = -100, dy = -100;
+    window.addEventListener("pointermove", function (e) { tx = e.clientX; ty = e.clientY; }, { passive: true });
+    document.querySelectorAll("a, button, [data-hover]").forEach(function (el) {
+      el.addEventListener("pointerenter", function () { cur.classList.add("hovering"); });
+      el.addEventListener("pointerleave", function () { cur.classList.remove("hovering"); });
+    });
+    (function loop() {
+      cx += (tx - cx) * 0.16; cy += (ty - cy) * 0.16;
+      dx += (tx - dx) * 0.4; dy += (ty - dy) * 0.4;
+      cur.style.transform = "translate(" + (cx - 17) + "px," + (cy - 17) + "px)";
+      dot.style.transform = "translate(" + (dx - 2.5) + "px," + (dy - 2.5) + "px)";
+      requestAnimationFrame(loop);
+    })();
+  })();
+
+  /* ============ Starfield background ============ */
+  (function () {
+    var canvas = document.getElementById("stars");
+    var ctx = canvas.getContext("2d");
+    var W, H, dpr, stars = [], meteors = [], shootTimer = 0;
+    var scroll = 0, mouseX = 0.5, mouseY = 0.5;
+    var LAYERS = 3;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth; H = window.innerHeight;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      canvas.style.width = W + "px"; canvas.style.height = H + "px";
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      seed();
+    }
+    function seed() {
+      stars = [];
+      var count = Math.round((W * H) / 5200);
+      for (var i = 0; i < count; i++) {
+        var layer = i % LAYERS;
+        stars.push({
+          x: Math.random() * W, y: Math.random() * H,
+          layer: layer,
+          size: (layer * 0.5 + 0.4) + Math.random() * 0.6,
+          base: 0.25 + layer * 0.25 + Math.random() * 0.4,
+          tw: Math.random() * Math.PI * 2,
+          tws: 0.006 + Math.random() * 0.02,
+          hue: Math.random()
+        });
+      }
+    }
+    function spawnMeteor() {
+      var fromTop = Math.random() > 0.5;
+      meteors.push({
+        x: Math.random() * W, y: fromTop ? -20 : Math.random() * H * 0.5,
+        vx: (Math.random() * 6 + 8) * (Math.random() > 0.5 ? 1 : -1),
+        vy: Math.random() * 4 + 6, life: 1, max: Math.random() * 30 + 40
+      });
+    }
+    window.addEventListener("resize", resize);
+    window.addEventListener("scroll", function () { scroll = window.scrollY; }, { passive: true });
+    window.addEventListener("pointermove", function (e) { mouseX = e.clientX / W; mouseY = e.clientY / H; }, { passive: true });
+
+    resize();
+    if (reduce) { // static stars, no animation
+      ctx.clearRect(0, 0, W, H);
+      stars.forEach(function (s) {
+        ctx.globalAlpha = s.base;
+        ctx.fillStyle = "#cdd3ff";
+        ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, 7); ctx.fill();
+      });
+      ctx.globalAlpha = 1;
+      return;
+    }
+
+    var t = 0;
+    function frame() {
+      t++;
+      ctx.clearRect(0, 0, W, H);
+      for (var i = 0; i < stars.length; i++) {
+        var s = stars[i];
+        s.tw += s.tws;
+        var a = s.base * (0.55 + 0.45 * Math.sin(s.tw));
+        var px = s.x + (mouseX - 0.5) * (s.layer + 1) * 10;
+        var py = (s.y - scroll * (0.04 + s.layer * 0.08)) % H;
+        if (py < -10) py += H + 20;
+        var tint = s.hue;
+        ctx.globalAlpha = a;
+        ctx.fillStyle = tint > 0.85 ? "#bfe9ff" : tint > 0.5 ? "#e6e2ff" : "#ffffff";
+        ctx.beginPath(); ctx.arc(px, py, s.size, 0, 7); ctx.fill();
+        if (s.size > 1.4) { ctx.globalAlpha = a * 0.25; ctx.beginPath(); ctx.arc(px, py, s.size * 2.6, 0, 7); ctx.fill(); }
+      }
+      ctx.globalAlpha = 1;
+      // meteors
+      shootTimer--;
+      if (shootTimer <= 0) { spawnMeteor(); shootTimer = Math.random() * 240 + 120; }
+      for (var m = meteors.length - 1; m >= 0; m--) {
+        var me = meteors[m];
+        me.x += me.vx; me.y += me.vy; me.life -= 1 / me.max;
+        if (me.life <= 0 || me.x < -60 || me.x > W + 60 || me.y > H + 60) { meteors.splice(m, 1); continue; }
+        var g = ctx.createLinearGradient(me.x, me.y, me.x - me.vx * 8, me.y - me.vy * 8);
+        g.addColorStop(0, "rgba(255,255,255," + (0.9 * me.life) + ")");
+        g.addColorStop(1, "rgba(53,224,255,0)");
+        ctx.strokeStyle = g; ctx.lineWidth = 2; ctx.lineCap = "round";
+        ctx.beginPath(); ctx.moveTo(me.x, me.y); ctx.lineTo(me.x - me.vx * 8, me.y - me.vy * 8); ctx.stroke();
+      }
+      requestAnimationFrame(frame);
+    }
+    frame();
+  })();
+
+  /* ============ Hero character reveal ============ */
+  (function () {
+    var el = document.getElementById("heroTitle");
+    var word = el.querySelector("[data-word]");
+    var text = word.getAttribute("data-word");
+    var chars = [];
+    for (var i = 0; i < text.length; i++) {
+      var span = document.createElement("span");
+      span.className = "ch" + (i >= text.length / 2 ? " glow" : "");
+      span.textContent = text[i];
+      span.style.animationDelay = (i * 0.06) + "s";
+      span.setAttribute("aria-hidden", "true");
+      word.appendChild(span);
+      chars.push(span);
+    }
+  })();
+
+  /* ============ Scroll: nav, progress, reveal, bars, counters, backtop ============ */
+  (function () {
+    var nav = document.getElementById("nav");
+    var prog = document.getElementById("progress");
+    var backTop = document.getElementById("backTop");
+
+    function onScroll() {
+      var y = window.scrollY;
+      nav.classList.toggle("scrolled", y > 40);
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      prog.style.transform = "scaleX(" + (max > 0 ? y / max : 0) + ")";
+      backTop.classList.toggle("show", y > window.innerHeight * 0.8);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    var reveals = document.querySelectorAll(".reveal, .rung");
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); }
+      });
+    }, { threshold: 0.18, rootMargin: "0px 0px -8% 0px" });
+    reveals.forEach(function (el) { io.observe(el); });
+
+    // counters
+    var cio = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (!en.isIntersecting) return;
+        var el = en.target; cio.unobserve(el);
+        var target = parseFloat(el.getAttribute("data-count"));
+        var dec = parseInt(el.getAttribute("data-dec") || "0", 10);
+        var suf = el.getAttribute("data-suffix") || "";
+        if (reduce) { el.textContent = fmt(target, dec) + suf; return; }
+        var start = performance.now(), dur = 1600;
+        (function tick(now) {
+          var p = Math.min(1, (now - start) / dur);
+          var e = 1 - Math.pow(1 - p, 3);
+          el.textContent = fmt(target * e, dec) + suf;
+          if (p < 1) requestAnimationFrame(tick);
+        })(start);
+      });
+    }, { threshold: 0.5 });
+    function fmt(n, dec) { return dec ? n.toFixed(dec) : Math.round(n).toLocaleString(); }
+    document.querySelectorAll("[data-count]").forEach(function (el) { cio.observe(el); });
+  })();
+
+  /* ============ Orbit speed controls ============ */
+  (function () {
+    var system = document.getElementById("system");
+    var orbits = system ? system.querySelectorAll(".orbit") : [];
+    var chips = document.querySelectorAll(".chip[data-speed]");
+    if (!system) return;
+    // store base durations
+    orbits.forEach(function (o) { o.dataset.base = o.style.animationDuration; });
+    function setSpeed(mult) {
+      orbits.forEach(function (o) {
+        var base = parseFloat(o.dataset.base);
+        if (mult === 0) { o.style.animationPlayState = "paused"; }
+        else {
+          o.style.animationPlayState = "running";
+          o.style.animationDuration = (base / mult) + "s";
+        }
+      });
+    }
+    chips.forEach(function (c) {
+      c.addEventListener("click", function () {
+        chips.forEach(function (x) { x.classList.remove("active"); });
+        c.classList.add("active");
+        setSpeed(parseInt(c.dataset.speed, 10));
+      });
+    });
+    if (!reduce && !isCoarse) { // hover to pause whole system
+      system.addEventListener("pointerenter", function () { system.classList.add("paused"); });
+      system.addEventListener("pointerleave", function () { system.classList.remove("paused"); });
+    }
+  })();
+
+  /* ============ Card 3D tilt + glare ============ */
+  (function () {
+    if (reduce || isCoarse) return;
+    document.querySelectorAll(".card").forEach(function (card) {
+      var raf = null, rx = 0, ry = 0, tx = 0, ty = 0;
+      card.addEventListener("pointermove", function (e) {
+        var r = card.getBoundingClientRect();
+        var px = (e.clientX - r.left) / r.width;
+        var py = (e.clientY - r.top) / r.height;
+        card.style.setProperty("--mx", (px * 100) + "%");
+        card.style.setProperty("--my", (py * 100) + "%");
+        tx = (py - 0.5) * -14; ty = (px - 0.5) * 18;
+        if (!raf) raf = requestAnimationFrame(apply);
+        function apply() {
+          raf = null;
+          rx += (tx - rx) * 0.2; ry += (ty - ry) * 0.2;
+          card.style.transform = "perspective(900px) rotateX(" + rx.toFixed(2) + "deg) rotateY(" + ry.toFixed(2) + "deg)";
+          if (Math.abs(tx - rx) > 0.05 || Math.abs(ty - ry) > 0.05) raf = requestAnimationFrame(apply);
+        }
+      });
+      card.addEventListener("pointerleave", function () {
+        var r2 = requestAnimationFrame(function step() {
+          rx *= 0.82; ry *= 0.82;
+          card.style.transform = "perspective(900px) rotateX(" + rx.toFixed(2) + "deg) rotateY(" + ry.toFixed(2) + "deg)";
+          if (Math.abs(rx) > 0.05 || Math.abs(ry) > 0.05) r2 = requestAnimationFrame(step);
+          else card.style.transform = "";
+        });
+      });
+    });
+  })();
+
+  /* ============ Gravity playground ============ */
+  (function () {
+    var canvas = document.getElementById("gravity");
+    if (!canvas) return;
+    var ctx = canvas.getContext("2d");
+    var W, H, dpr;
+    var parts = [];
+    var mouse = { x: -9999, y: -9999, active: false };
+    var hint = document.getElementById("playHint");
+    var hueShift = 0;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var r = canvas.getBoundingClientRect();
+      W = r.width; H = r.height;
+      canvas.width = W * dpr; canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function makePart(randomX) {
+      var a = Math.random() * Math.PI * 2;
+      var rad = 40 + Math.random() * Math.min(W, H) * 0.4;
+      return {
+        x: randomX ? Math.random() * W : W / 2 + Math.cos(a) * rad,
+        y: randomX ? Math.random() * H : H / 2 + Math.sin(a) * rad,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: (Math.random() - 0.5) * 1.5,
+        size: Math.random() * 1.6 + 0.6,
+        hue: Math.random()
+      };
+    }
+    function seed() { parts = []; for (var i = 0; i < 260; i++) parts.push(makePart(false)); }
+
+    window.addEventListener("resize", function () { resize(); seed(); });
+    canvas.addEventListener("pointermove", function (e) {
+      var r = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - r.left; mouse.y = e.clientY - r.top; mouse.active = true;
+      if (hint) hint.classList.add("gone");
+    });
+    canvas.addEventListener("pointerleave", function () { mouse.active = false; });
+    canvas.addEventListener("pointerdown", function () { if (!reduce) seed(); });
+
+    resize(); seed();
+
+    if (reduce) { // gentle static-ish render
+      (function still() { draw(0); })();
+    }
+
+    var last = performance.now();
+    function loop(now) {
+      var dt = Math.min(2.5, (now - last) / 16.67); last = now;
+      step(dt); draw(dt);
+      requestAnimationFrame(loop);
+    }
+
+    function step(dt) {
+      var cx = mouse.active ? mouse.x : W / 2;
+      var cy = mouse.active ? mouse.y : H / 2;
+      var strength = mouse.active ? 0.9 : 0.12; // gentle center pull when idle
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        var dx = cx - p.x, dy = cy - p.y;
+        var d2 = dx * dx + dy * dy + 40;
+        var d = Math.sqrt(d2);
+        var f = strength / (d2 * 0.06 + 1);
+        // gravitational pull + tangential swirl for orbit
+        p.vx += (dx / d) * f * dt + (-dy / d) * f * 0.6 * dt;
+        p.vy += (dy / d) * f * dt + (dx / d) * f * 0.6 * dt;
+        // damping keeps it stable
+        p.vx *= 0.985; p.vy *= 0.985;
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.hue = (p.hue + 0.0008 * dt) % 1;
+        // respawn if swallowed or off-screen
+        if (d < 14 || p.x < -20 || p.x > W + 20 || p.y < -20 || p.y > H + 20) {
+          var np = makePart(false); np.x = Math.random() * W; np.y = Math.random() * H;
+          parts[i] = np;
+        }
+      }
+      hueShift += 0.1 * dt;
+    }
+
+    function draw(dt) {
+      ctx.clearRect(0, 0, W, H);
+      var cx = mouse.active ? mouse.x : W / 2;
+      var cy = mouse.active ? mouse.y : H / 2;
+      // attractor glow
+      var glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, 120);
+      glow.addColorStop(0, "rgba(124,92,255,0.35)");
+      glow.addColorStop(0.4, "rgba(53,224,255,0.12)");
+      glow.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = glow; ctx.fillRect(0, 0, W, H);
+      // core
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath(); ctx.arc(cx, cy, 4, 0, 7); ctx.fill();
+
+      ctx.globalCompositeOperation = "lighter";
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i];
+        var speed = Math.min(1, Math.hypot(p.vx, p.vy) * 0.4);
+        var h = 200 + p.hue * 120 + hueShift;
+        ctx.fillStyle = "hsla(" + h + ", 90%, " + (55 + speed * 30) + "%, " + (0.5 + speed * 0.5) + ")";
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.size + speed, 0, 7); ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+    }
+
+    if (!reduce) requestAnimationFrame(loop);
+    else draw(0);
+  })();
+})();
+</script>
+</body>
+</html>
